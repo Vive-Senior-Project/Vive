@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { KeyboardAvoidingView, ScrollView } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, Alert } from 'react-native';
 import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Dimensions, FlatList } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const {width, height} = Dimensions.get('window');
 const Tab = createBottomTabNavigator();
@@ -37,45 +38,38 @@ function NewUserScreen({navigation}) {
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
+
+  const registerUser = async () => {
+    try {
+      const response = await fetch('http://3.148.187.191:3000/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+
+      const data = await response.json();
+      console.log(data);
+
+      if (response.ok) {
+        navigation.navigate('Home');
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Could not connect to server');
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <Text style = {styles.title}> Create New Account</Text>
-      <View style = {styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Name"
-          value={name}
-          onChangeText={setName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-        <TouchableOpacity
-          style={[styles.buttonShape, styles.CreateAccountButton]}
-          onPress={() => navigation.navigate('New User Quiz', {name})}
-            >
-            <Text style={styles.buttonText}>Get Started</Text>
-            </TouchableOpacity>
-    </View>
+      <TextInput placeholder="Name" value={name} onChangeText={setName} style={styles.input} />
+      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} />
+      <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
+
+      <TouchableOpacity onPress={registerUser} style={styles.button}>
+        <Text style={styles.buttonText}>Register</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -84,33 +78,49 @@ function ExistingUserScreen({navigation}) {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
 
+  const handleLogin = async () => {
+    try {
+      const response = await fetch('http://3.148.187.191:3000/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        navigation.navigate('Home');
+      } else {
+        Alert.alert('Login Failed', data.error || 'An error occurred.');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      Alert.alert('Error', 'Failed to connect to server');
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <Text style = {styles.title}> Existing User</Text>
-      <View style = {styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TouchableOpacity
-          style={[styles.buttonShape, styles.CreateAccountButton]}
-          onPress={() => {
-            navigation.navigate('Home', {
-              screen: 'Home'
-            });
-          }}            >
-            <Text style={styles.buttonText}>Login</Text>
-            </TouchableOpacity>
-      </View>
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        onChangeText={setEmail}
+        value={email}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        onChangeText={setPassword}
+        value={password}
+        secureTextEntry
+      />
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <Text style={styles.buttonText}>Login</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -287,11 +297,16 @@ function NewUserQuizScreen({route, navigation}) {
 function HomeScreen({navigation}) {
   return (
     <Tab.Navigator
+      initialRouteName="Home"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
-          if(route.name === 'Wellness') {
+          if (route.name === 'Home') {
+            iconName = focused
+            ? require('./assets/Home.png')
+            : require('./assets/Home.png')
+          } else if(route.name === 'Wellness') {
             iconName = focused
             ? require('./assets/Wellness.png')
             : require('./assets/Wellness.png');
@@ -311,7 +326,7 @@ function HomeScreen({navigation}) {
             iconName = focused
             ? require('./assets/Achievements.png')
             : require('./assets/Achievements.png');
-          }
+          };
           return <Image source={iconName} style={{width: 35, height: 35}} />;
         },
         tabBarActiveTintColor: '#ACC098',
@@ -1168,6 +1183,7 @@ function RootStack(){
       <Stack.Screen name="Existing User" component={ExistingUserScreen} />
       <Stack.Screen name="New User Quiz" component={NewUserQuizScreen} />
       <Stack.Screen name="Home" component={HomeScreen} options={{headerShown: false}} />
+      <Stack.Screen name="Wellness" component={WellnessScreen} options={{headerShown: false}} />
       <Stack.Screen name="Today's Plan" component={TodaysPlanScreen} options={{headerShown: false}} />
       <Stack.Screen name="Journal" component={JournalScreen} options={{headerShown: false}}/>
       <Stack.Screen name="New Journal Entry" component={NewJournalEntryScreen} options={{headerShown: false}}/>

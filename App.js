@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { KeyboardAvoidingView, ScrollView, Alert } from 'react-native';
 import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Dimensions, FlatList } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useRoute } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,7 +41,7 @@ function NewUserScreen({navigation}) {
 
   const registerUser = async () => {
     try {
-      const response = await fetch('http://3.148.187.191:3000/register', {
+      const response = await fetch('http://18.217.82.26:3000/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })
@@ -51,7 +51,8 @@ function NewUserScreen({navigation}) {
       console.log(data);
 
       if (response.ok) {
-        navigation.navigate('Home');
+        const { userId } = data.user;
+        navigation.navigate('New User Quiz', { userId });
       } else {
         alert(data.error);
       }
@@ -80,7 +81,7 @@ function ExistingUserScreen({navigation}) {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch('http://3.148.187.191:3000/login', {
+      const response = await fetch('http://18.217.82.26:3000/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,11 +128,12 @@ function ExistingUserScreen({navigation}) {
 
 function NewUserQuizScreen({route, navigation}) {
   const scrollViewRef = React.useRef(null);
-  const {name} = route.params;
+  const displayName = name || 'User';
   const [ageRange, setAgeRange] = React.useState('');
   const [fitnessLevel, setFitnessLevel] = React.useState('');
   const [workoutType, setWorkoutType] = React.useState('');
   const [description, setDescription] = React.useState('');
+  const { name, userId } = route.params || {};
 
 
   const handleWorkoutTypePress = (type) => {
@@ -143,15 +145,31 @@ function NewUserQuizScreen({route, navigation}) {
     }
   };
 
-  const handleSubmit = () => {
-    console.log('Age Range:', ageRange);
-    console.log('Fitness Level:', fitnessLevel);
-    console.log('Workout Type:', workoutType);
-    console.log('Description:', description);
-    navigation.navigate('Home', {
-      screen: 'Home'
-    });
+  const handleSubmit = async () => {
+    const quizData = {
+      user_id: userId,
+      age_range: ageRange,
+      fitness_level: fitnessLevel,
+      workout_types: workoutType,
+      goal_description: description
+    };
+  
+    try {
+      const response = await fetch('http://18.217.82.26:3000/api/quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(quizData)
+      });
+  
+      const result = await response.json();
+      console.log('Quiz response saved:', result);
+      const { name } = data.user;
+      navigation.navigate('Home', { screen: 'Home' }, { name });
+    } catch (err) {
+      console.error('Error submitting quiz:', err);
+    }
   };
+  
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -167,7 +185,7 @@ function NewUserQuizScreen({route, navigation}) {
       keyboardShouldPersistTaps="handled"
     >
     <View style={styles.quizContainer}>
-      <Text style = {styles.title}>Welcome {name}! </Text>
+      <Text style = {styles.title}>Welcome {displayName}! </Text>
 
       <Text style = {styles.sectionTitle}>Please select your age range:</Text>
       <View style = {styles.buttonContainer}>
@@ -271,10 +289,10 @@ function NewUserQuizScreen({route, navigation}) {
         </TouchableOpacity>
         </View>
 
-        <Text style = {styles.sectionTitle}>Briefly describe your goals:</Text>
+        <Text style = {styles.sectionTitle}>Anything else we should know?: </Text>
         <TextInput
           style={styles.largeInput}
-          placeholder="Enter text here..."
+          placeholder="Enter any mobility limitations, dietary restrictions, etc..."
           multiline
           numberOfLines={4}
           value={description}
@@ -371,7 +389,7 @@ function WellnessScreen({navigation}) {
 
       <TouchableOpacity 
         style={styles.wellnessButton}
-        onPress={() => navigation.getParent().navigate('Journal')}
+        onPress={() => navigation.getParent().navigate('Journal', {userId})}
       >
         <Text style={styles.wellnessButtonText}>Journal</Text>
       </TouchableOpacity>
@@ -465,6 +483,7 @@ return (
 }
 
 function JournalEntryScreen({route, navigation}){
+  const { userId } = route.params;
   const {entry} = route.params || {
     title: 'Journal Entry',
     date: new Date().toLocaleDateString('en-US', {
@@ -1199,4 +1218,3 @@ export default function App() {
     </NavigationContainer>
   );
 };
-
